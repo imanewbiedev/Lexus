@@ -33,10 +33,14 @@ app.post('/login', (req, res) => {
   });
 });
 
-
 // Endpoint to handle registration
 app.post('/register', (req, res) => {
   const { username, key } = req.body;
+
+  // Check if the provided key is empty
+  if (!key) {
+    return res.json({ success: false, message: 'Key cannot be empty' });
+  }
 
   // Read the keys from the "Keys.txt" file
   const keys = fs.readFileSync('Keys.txt', 'utf8').split('\n').map(key => key.trim());
