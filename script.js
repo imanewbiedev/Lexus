@@ -37,29 +37,33 @@ app.post('/login', (req, res) => {
 app.post('/register', (req, res) => {
   const { username, key } = req.body;
 
-  // Check if the provided key is empty
-  if (!key) {
-    return res.json({ success: false, message: 'Key cannot be empty' });
-  }
+  // Read the credentials from the file
+  fs.readFile(credentialsFile, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading credentials file:', err);
+      return res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
 
-  // Read the keys from the "Keys.txt" file
-  const keys = fs.readFileSync('Keys.txt', 'utf8').split('\n').map(key => key.trim());
+    // Parse the credentials from the file
+    const credentials = JSON.parse(data);
 
-  // Check if the provided key exists in the keys file
-  if (keys.includes(key)) {
-    // Remove the key from the keys file
-    const updatedKeys = keys.filter(existingKey => existingKey !== key);
-    fs.writeFileSync('Keys.txt', updatedKeys.join('\n'));
+    // Check if the key is already associated with another user
+    const keyAlreadyExists = credentials.some((cred) => cred.password === key);
 
-    // Update the credentials file with the new registration information
-    const credentials = JSON.parse(fs.readFileSync('credentials.txt', 'utf8'));
-    credentials.push({ username, password: key });
-    fs.writeFileSync('credentials.txt', JSON.stringify(credentials, null, 2));
-
-    res.json({ success: true });
-  } else {
-    res.json({ success: false });
-  }
+    if (keyAlreadyExists) {
+      res.json({ success: false, message: 'Key already used by another user' });
+    } else {
+      // Update the credentials file with the new registration information
+      credentials.push({ username, password: key });
+      fs.writeFile(credentialsFile, JSON.stringify(credentials, null, 2), (err) => {
+        if (err) {
+          console.error('Error writing to credentials file:', err);
+          return res.status(500).json({ success: false, message: 'Internal Server Error' });
+        }
+        res.json({ success: true });
+      });
+    }
+  });
 });
 
 app.listen(port, () => {
